@@ -1,12 +1,91 @@
-struct RunInTerminalRequestArguments <: Request
-    kind::Union{Nothing,String}
-    title::Union{Nothing,String}
-    cwd::String
-    args::Vector{String}
-    env::Union{Nothing,Dict{String,Union{Nothing,String}}}
+struct Request{T} <: ProtocolMessage
+    seq::Int
+    arguments::T
+end
+export Request
+
+request_arguments_type(t::Type{Val{S}}) where S = @error "Request arguments type $(t.parameters[1]) undefined."
+
+function Request(d::Dict)
+    argumentstype = request_arguments_type(Val{Symbol(d["command"])})
+    arguments = argumentstype(get(d, "arguments", Dict()))
+    Request{argumentstype}(d["seq"], arguments)
 end
 
-struct InitializeRequestArguments <: Request
+protocol_message_type(::Type{Val{:request}}) = Request
+
+macro request(structdefn, subst = Dict{Symbol,String}())
+    corename = structdefn.args[2]
+    argumentsval = Val{Symbol(lowercasefirst(string(corename)))}
+    bodyname = Symbol(string(corename)*"RequestArguments")
+    aliasname = Symbol(string(corename)*"Request")
+    structdefn.args[2] = bodyname
+    esc(quote
+        @dict_ctor $structdefn $subst
+        const $aliasname = Request{$bodyname}
+        export $aliasname
+        request_arguments_type(::Type{$argumentsval}) = $bodyname
+    end)
+end
+
+@request struct Attach
+    __restart::Union{Nothing,Any}
+end
+
+@request struct Completions
+    frameId::Union{Nothing,Int}
+    text::String
+    column::Int
+    line::Union{Nothing,Int}
+end
+
+@request struct ConfigurationDone end
+
+@request struct Continue
+    threadId::Int
+end
+
+@request struct DataBreakpointInfo
+    variableReference::Union{Nothing,Int}
+    name::String
+end
+
+@request struct Disassemble
+    memoryReference::String
+    offset::Union{Nothing,Int}
+    instructionOffset::Union{Nothing,Int}
+    instructionCount::Int
+    resolveSymbols::Union{Nothing,Bool}
+end
+
+@request struct Disconnect
+    restart::Union{Nothing,Bool}
+    terminateDebuggee::Union{Nothing,Bool}
+end
+
+@request struct Evaluate
+    expression::String
+    frameId::Union{Nothing,Int}
+    context::Union{Nothing,String}
+    format::Union{Nothing,ValueFormat}
+end
+
+@request struct ExceptionInfo
+    threadId::Int
+end
+
+@request struct Goto
+    threadId::Int
+    targetId::Int
+end
+
+@request struct GotoTargets
+    source::Source
+    line::Int
+    column::Union{Nothing,Int}
+end
+
+@request struct Initialize
     clientID::Union{Nothing,String}
     clientName::Union{Nothing,String}
     adapterID::String
@@ -20,263 +99,134 @@ struct InitializeRequestArguments <: Request
     supportsMemoryReferences::Union{Nothing,Bool}
 end
 
-struct ConfigurationDoneArguments <: Request end
-
-struct LaunchRequestArguments <: Request
+@request struct Launch
     noDebug::Union{Nothing,Bool}
-    __restart::Any
+    __restart::Union{Nothing,Any}
 end
 
-struct AttachRequestArguments <: Request
-    __restart::Any
+@request struct LoadedSources end
+
+@request struct Modules
+    startModule::Union{Nothing,Int}
+    moduleCount::Union{Nothing,Int}
 end
 
-struct RestartRequestArguments <: Request end
-
-struct DisconnectRequestArguments <: Request
-    restart::Union{Nothing,Bool}
-    terminateDebuggee::Union{Nothing,Bool}
+@request struct Next
+    threadId::Int
 end
 
-struct TerminateRequestArguments <: Request
-    restart::Union{Nothing,Bool}
+@request struct Pause
+    threadId::Int
 end
 
-struct SetBreakpointsArguments <: Request
+@request struct ReadMemory
+    memoryReference::String
+    offset::Union{Nothing,Int}
+    count::Int
+end
+
+@request struct Restart end
+
+@request struct RestartFrame
+    frameId::Int
+end
+
+@request struct ReverseContinue
+    threadId::Int
+end
+
+const TerminalKind = String
+const TerminalKinds = ("integrated", "external")
+
+@request struct RunInTerminal
+    kind::Union{Nothing,TerminalKind}
+    title::Union{Nothing,String}
+    cwd::String
+    args::Vector{String}
+    env::Union{Nothing,Dict{String,Union{Nothing,String}}}
+end
+
+@request struct Scopes
+    frameId::Int
+end
+
+@request struct SetBreakpoints
     source::Source
     breakpoints::Union{Nothing,Vector{SourceBreakpoint}}
     lines::Union{Nothing,Vector{Int}}
     sourceModified::Union{Nothing,Bool}
 end
 
-struct SetFunctionBreakpointsArguments <: Request
-    breakpoints::Vector{FunctionBreakpoint}
+@request struct SetDataBreakpoints
+    breakpoints::Vector{DataBreakpoint}
 end
 
-struct SetExceptionBreakpointsArguments <: Request
+@request struct SetExceptionBreakpoints
     filters::Vector{String}
     exceptionOptions::Union{Nothing,Vector{ExceptionOptions}}
 end
 
-struct DataBreakpointInfoArguments <: Request
-    variableReference::Union{Nothing,Int}
+@request struct SetExpression
+    expression::String
+    value::String
+    frameId::Union{Nothing,Int}
+    format::Union{Nothing,ValueFormat}
+end
+
+@request struct SetFunctionBreakpoints
+    breakpoints::Vector{FunctionBreakpoint}
+end
+
+@request struct SetVariable
+    variablesReference::Int
     name::String
+    value::String
+    format::Union{Nothing,ValueFormat}
 end
 
-struct SetDataBreakpointsArguments <: Request
-    breakpoints::Vector{DataBreakpoint}    
+@request struct Source
+    source::Union{Nothing,Source}
+    sourceReference::Int
 end
 
-struct ContinueArguments <: Request
-    threadId::Int    
-end
-
-struct NextArguments <: Request
-    threadId::Int    
-end
-
-struct StepInArguments <: Request
-    threadId::Int
-    targetId::Union{Nothing,Int}
-end
-
-struct StepOutArguments <: Request
-    threadId::Int    
-end
-
-struct StepBackArguments <: Request
-    threadId::Int    
-end
-
-struct ReverseContinueArguments <: Request
-    threadId::Int    
-end
-
-struct RestartFrameArguments <: Request
-    frameId::Int    
-end
-
-struct GotoArguments <: Request
-    threadId::Int
-    targetId::Int
-end
-
-struct PauseArguments <: Request
-    threadId::Int
-end
-
-struct StackTraceArguments <: Request
+@request struct StackTrace
     threadId::Int
     startFrame::Union{Nothing,Int}
     levels::Union{Nothing,Int}
     format::Union{Nothing,StackFrameFormat}
 end
 
-struct ScopesArguments <: Request
+@request struct StepBack
+    threadId::Int
+end
+
+@request struct StepIn
+    threadId::Int
+    targetId::Union{Nothing,Int}
+end
+
+@request struct StepInTargets
     frameId::Int
 end
 
-struct VariablesArguments <: Request
+@request struct StepOut
+    threadId::Int
+end
+
+@request struct Terminate
+    restart::Union{Nothing,Bool}
+end
+
+@request struct TerminateThreads
+    threadIds::Union{Nothing,Vector{Int}}
+end
+
+@request struct Threads end
+
+@request struct Variables
     variablesReference::Int
     filter::Union{Nothing,String}
     start::Union{Nothing,Int}
     count::Union{Nothing,Int}
     format::Union{Nothing,ValueFormat}
 end
-
-struct SetVariableArguments <: Request
-    variablesReference::Int
-    name::String
-    value::String
-    format::Union{Nothing,ValueFormat}
-end
-
-struct SourceArguments <: Request
-    source::Union{Nothing,Source}
-    sourceReference::Int
-end
-
-struct TerminateThreadsArguments <: Request
-    threadIds::Union{Nothing,Vector{Int}}
-end
-
-struct ModulesArguments <: Request
-    startModule::Union{Nothing,Int}
-    moduleCount::Union{Nothing,Int}
-end
-
-struct LoadedSourcesArguments <: Request end
-
-struct EvaluateArguments <: Request
-    expression::String
-    frameId::Union{Nothing,Int}
-    context::Union{Nothing,String}
-    format::Union{Nothing,ValueFormat}
-end
-
-struct SetExpressionArguments <: Request
-    expression::String
-    value::String
-    frameId::Union{Nothing,Int}
-    format::Union{Nothing,ValueFormat}
-end
-
-struct StepInTargetsArguments <: Request
-    frameId::Int
-end
-
-struct GotoTargetsArguments <: Request
-    source::Source
-    line::Int
-    column::Union{Nothing,Int}
-end
-
-struct CompletionsArguments <: Request
-    frameId::Union{Nothing,Int}
-    text::String
-    column::Int
-    line::Union{Nothing,Int}
-end
-
-struct ExceptionInfoArguments <: Request
-    threadId::Int    
-end
-
-struct ReadMemoryArguments <: Request
-    memoryReference::String
-    offset::Union{Nothing,Int}
-    count::Int
-end
-
-struct DisassembleArguments <: Request
-    memoryReference::String
-    offset::Union{Nothing,Int}
-    instructionOffset::Union{Nothing,Int}
-    instructionCount::Int
-    resolveSymbols::Union{Nothing,Bool}
-end
-
-function request_arg_parse(r::Request)
-    if r.command == "runInTerminal"
-        RunInTerminalRequestArguments(r.arguments)
-    elseif r.command == "initialize"
-        InitializeRequestArguments(r.arguments)
-    elseif r.command == "configurationDone"
-        ConfigurationDoneArguments(r.arguments)
-    elseif r.command == "launch"
-        LaunchRequestArguments(r.arguments)
-    elseif r.command == "attach"
-        AttachRequestArguments(r.arguments)
-    elseif r.command == "restart"
-        RestartRequestArguments(r.arguments)
-    elseif r.command == "disconnect"
-        DisconnectRequestArguments(r.arguments)
-    elseif r.command == "terminate"
-        TerminateRequestArguments(r.arguments)
-    elseif r.command == "setBreakpoints"
-        SetBreakpointsArguments(r.arguments)
-    elseif r.command == "setFunctionBreakpoints"
-        SetFunctionBreakpointsArguments(r.arguments)
-    elseif r.command == "setExceptionBreakpoints"
-        SetBreakpointsArguments(r.arguments)
-    elseif r.command == "dataBreakpointInfo"
-        DataBreakpointInfoArguments(r.arguments)
-    elseif r.command == "setDataBreakpoints"
-        SetDataBreakpointsArguments(r.arguments)
-    elseif r.command == "continue"
-        ContinueArguments(r.arguments)
-    elseif r.command == "next"
-        NextArguments(r.arguments)
-    elseif r.command == "stepIn"
-        StepInArguments(r.arguments)
-    elseif r.command == "stepOut"
-        StepOutArguments(r.arguments)
-    elseif r.command == "stepBack"
-        StepBackArguments(r.arguments)
-    elseif r.command == "reverseContinue"
-        ReverseContinueArguments(r.arguments)
-    elseif r.command == "restartFrame"
-        RestartFrameArguments(r.arguments)
-    elseif r.command == "goto"
-        GotoArguments(r.arguments)
-    elseif r.command == "pause"
-        PauseArguments(r.arguments)
-    elseif r.command == "stackTrace"
-        StackTraceArguments(r.arguments)
-    elseif r.command == "scopes"
-        ScopesArguments(r.arguments)
-    elseif r.command == "variables"
-        VariablesArguments(r.arguments)
-    elseif r.command == "setVariable"
-        SetVariableArguments(r.arguments)
-    elseif r.command == "source"
-        SourceArguments(r.arguments)
-    elseif r.command == "threads"
-        r.arguments
-    elseif r.command == "terminateThreads"
-        TerminateThreadsArguments(r.arguments)
-    elseif r.command == "modules"
-        ModulesArguments(r.arguments)
-    elseif r.command == "loadedSources"
-        LoadedSourcesArguments(r.arguments)
-    elseif r.command == "evaluate"
-        EvaluateArguments(r.arguments)
-    elseif r.command == "setExpression"
-        SetExpressionArguments(r.arguments)
-    elseif r.command == "setpInTargets"
-        StepInTargetsArguments(r.arguments)
-    elseif r.command == "gotoTargets"
-        GotoTargetsArguments(r.arguments)
-    elseif r.command == "completions"
-        CompletionsArguments(r.arguments)
-    elseif r.command == "exceptionInfo"
-        ExceptionInfoArguments(r.arguments)
-    elseif r.command == "readMemory"
-        ReadMemoryArguments(r.arguments)
-    elseif r.command == "disassemble"
-        DisassembleArguments(r.arguments)
-    end
-end
-
-
-

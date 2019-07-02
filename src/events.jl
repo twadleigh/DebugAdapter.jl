@@ -1,33 +1,67 @@
-struct InitializedEvent <: Event end
+struct Event{T} <: ProtocolMessage
+    seq::Int
+    body::T
+end
+export Event
 
-struct StoppedEvent <: Event
-    reason::String
-    description::Union{Nothing,String}
-    threadId::Union{Nothing,Int}
-    preserveFocusHint::Union{Nothing,Bool}
-    text::Union{Nothing,String}
-    allThreadsStopped::Union{Nothing,Bool}
+event_body_type(t::Type{Val{S}}) where S = @error "Event body type $(t.parameters[1]) undefined."
+
+function Event(d::Dict)
+    bodytype = event_body_type(Val{Symbol(d["event"])})
+    body = bodytype(get(d, "body", Dict()))
+    Event{bodytype}(d["seq"], body)
 end
 
-struct ContinuedEvent <: Event
+protocol_message_type(::Type{Val{:event}}) = Event
+
+macro event(structdefn, subst = Dict{Symbol,String}())
+    corename = structdefn.args[2]
+    eventval = Val{Symbol(lowercasefirst(string(corename)))}
+    bodyname = Symbol(string(corename)*"EventBody")
+    aliasname = Symbol(string(corename)*"Event")
+    structdefn.args[2] = bodyname
+    esc(quote
+        @dict_ctor $structdefn $subst
+        const $aliasname = Event{$bodyname}
+        export $aliasname
+        event_body_type(::Type{$eventval}) = $bodyname
+    end)
+end
+
+@event struct Breakpoint
+    reason::String
+    breakpont::Breakpoint
+end
+
+@event struct Capabilities
+    capabilities::Capabilities
+end
+
+@event struct Continued
     threadId::Int
     allThreadsContinued::Union{Nothing,Bool}
 end
 
-struct ExitedEvent <: Event
-    exitCode::Int    
+@event struct Exited
+    exitCode::Int
 end
 
-struct TerminatedEvent <: Event
-    restart::Union{Nothing,Any}
+@event struct Initialized end
+
+const LoadedReason = String
+const LoadedReasons = ("new", "changed", "removed")
+
+@event struct LoadedSource
+    reason::LoadedReason
+    source::Source
 end
 
-struct ThreadEvent <: Event
-    reason::String
-    threadId::Int
-end
+@event struct Module
+    reason::LoadedReason
+    mod::Module
+end Dict(:mod => "module")
 
-struct OutputEvent <: Event
+@event struct Output
     category::Union{Nothing,String}
     output::String
     variablesReference::Union{Nothing,Int}
@@ -37,29 +71,31 @@ struct OutputEvent <: Event
     data::Union{Nothing,Any}
 end
 
-struct BreakpointEvent <: Event
-    reason::String
-    breakpont::Breakpoint
-end
+const StartMethod = String
+const StartMethods = ("launch", "attach", "attachForSuspendedLaunch")
 
-struct ModuleEvent <: Event
-    reason::String
-    mod::Module
-end
-
-struct LoadedSourceEvent <: Event
-    reason::String
-    source::Source
-end
-
-struct ProcessEvent <: Event
+@event struct Process
     name::String
-    systemProcessId::Union{Nothing,Int}    
+    systemProcessId::Union{Nothing,Int}
     isLocalProcess::Union{Nothing,Bool}
-    startMethod::Union{Nothing,String}
+    startMethod::Union{Nothing,StartMethod}
     pointerSize::Union{Nothing,Int}
 end
 
-struct CapabilitiesEvent <: Event
-    capabilities::Capabilities
+@event struct Stopped
+    reason::String
+    description::Union{Nothing,String}
+    threadId::Union{Nothing,Int}
+    preserveFocusHint::Union{Nothing,Bool}
+    text::Union{Nothing,String}
+    allThreadsStopped::Union{Nothing,Bool}
+end
+
+@event struct Terminated
+    restart::Union{Nothing,Any}
+end
+
+@event struct Thread
+    reason::String
+    threadId::Int
 end
