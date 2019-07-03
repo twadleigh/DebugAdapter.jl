@@ -157,6 +157,11 @@ end
     sourceModified::Union{Nothing,Bool}
 end
 
+@request struct DataBreakpointsInfo
+    variablesReference::Union{Nothing,Int}
+    name::String
+end
+
 @request struct SetDataBreakpoints
     breakpoints::Vector{DataBreakpoint}
 end

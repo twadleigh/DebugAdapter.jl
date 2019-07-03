@@ -49,9 +49,20 @@ macro dict_ctor(structdefn, subst = Dict{Symbol,String}())
     return esc(ex)
 end
 
+mutable struct DebugAdapterServer
+    pipe_lin
+    pipe_out
+end
+
 include("types.jl")
 include("events.jl")
 include("requests.jl")
 include("responses.jl")
+include("handlers/adapterprocess.jl")
+include("handlers/breakpoints.jl")
+include("handlers/stepping.jl")
+
+function send(response, server::DebugAdapterServer)
+end
 
 end  # module DebugAdapter
