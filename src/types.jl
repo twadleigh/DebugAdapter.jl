@@ -1,11 +1,12 @@
 const ChecksumAlgorithm = String
-struct ExceptionBreakpointsFilter
+
+@dict_ctor struct ExceptionBreakpointsFilter
     filter::String
     label::String
     default::Union{Nothing,Bool}
 end
 
-struct ColumnDescriptor
+@dict_ctor struct ColumnDescriptor
     attributeName::String
     label::String
     format::Union{Nothing,String}
@@ -13,7 +14,7 @@ struct ColumnDescriptor
     width::Union{Nothing,Int}
 end
 
-struct Capabilities
+@dict_ctor struct Capabilities
   supportsConfigurationDoneRequest::Union{Nothing,Bool}
   supportsFunctionBreakpoints::Union{Nothing,Bool}
   supportsConditionalBreakpoints::Union{Nothing,Bool}
@@ -45,7 +46,7 @@ struct Capabilities
   supportsDisassembleRequest::Union{Nothing,Bool}
 end
 
-struct Message
+@dict_ctor struct Message
     id::Int
     format::String
     variables::Union{Nothing,Dict{String,String}}
@@ -55,7 +56,7 @@ struct Message
     urlLabel::Union{Nothing,String}
 end
 
-struct Module
+@dict_ctor struct Module
     id::Union{Int,String}
     name::String
     path::Union{Nothing,String}
@@ -67,21 +68,21 @@ struct Module
     addressRange::Union{Nothing,String}
 end
 
-struct ModulesViewDescriptor
+@dict_ctor struct ModulesViewDescriptor
     columns::Vector{ColumnDescriptor}
 end
 
-struct Thread
+@dict_ctor struct Thread
     id::Int
     name::String
 end
 
-struct Checksum
+@dict_ctor struct Checksum
     algorithm::ChecksumAlgorithm
     checksum::String
 end
 
-struct Source
+@dict_ctor struct Source
     name::Union{Nothing,String}
     path::Union{Nothing,String}
     sourceReference::Union{Nothing,Int}
@@ -92,7 +93,7 @@ struct Source
     checksums::Union{Nothing,Vector{Checksum}}
 end
 
-struct StackFrame
+@dict_ctor struct StackFrame
     id::Int
     name::String
     source::Union{Nothing,Source}
@@ -105,10 +106,10 @@ struct StackFrame
     presentationHint::Union{Nothing,String}
 end
 
-struct Scope
+@dict_ctor struct Scope
     name::String
     presentationHint::Union{Nothing,String}
-    variablesReference:Int
+    variablesReference::Int
     namedVariables::Union{Nothing,Int}
     indexedVariables::Union{Nothing,Int}
     expensive::Bool
@@ -119,14 +120,13 @@ struct Scope
     endColum::Union{Nothing,Int}
 end
 
-
-struct VariablePresentationHint
+@dict_ctor struct VariablePresentationHint
     kind::Union{Nothing,String}
     attributes::Union{Nothing,Vector{String}}
     visibility::Union{Nothing,String}
 end
 
-struct Variable
+@dict_ctor struct Variable
     name::String
     value::String
     type::Union{Nothing,String}
@@ -139,7 +139,7 @@ struct Variable
 end
 
 
-struct SourceBreakpoint
+@dict_ctor struct SourceBreakpoint
     line::Int
     column::Union{Nothing,Int}
     condition::Union{Nothing,String}
@@ -147,21 +147,21 @@ struct SourceBreakpoint
     logMessage::Union{Nothing,String}
 end
 
-struct FunctionBreakpoint
+@dict_ctor struct FunctionBreakpoint
     name::String
     condition::Union{Nothing,String}
     hitCondition::Union{Nothing,String}
 end
 
 const DataBreakpointAccessType = String
-struct DataBreakpoint
+@dict_ctor struct DataBreakpoint
     dataId::String
     accessType::Union{Nothing,DataBreakpointAccessType}
     condition::Union{Nothing,String}
     hitCondition::Union{Nothing,String}
 end
 
-struct Breakpoint
+@dict_ctor struct Breakpoint
     id::Union{Nothing,Int}
     verified::Bool
     message::Union{Nothing,String}
@@ -173,13 +173,13 @@ struct Breakpoint
 end
 
 
-struct StepInTarget
+@dict_ctor struct StepInTarget
     id::Int
     label::String
 end
 
-struct GotoTarget
-    id::Int    
+@dict_ctor struct GotoTarget
+    id::Int
     label::String
     line::Int
     column::Union{Nothing,Int}
@@ -189,19 +189,19 @@ struct GotoTarget
 end
 
 const CompletionItemType = String
-struct CompletionItem
+@dict_ctor struct CompletionItem
     label::String
-    text::Union{Nothing,String}    
+    text::Union{Nothing,String}
     type::CompletionItemType
     start::Union{Nothing,Int}
     length::Union{Nothing,Int}
 end
 
-struct ValueFormat
+@dict_ctor struct ValueFormat
     hex::Union{Nothing,Bool}
 end
 
-struct StackFrameFormat
+@dict_ctor struct StackFrameFormat
     parameters::Union{Nothing,Bool}
     parameterTypes::Union{Nothing,Bool}
     parameterNames::Union{Nothing,Bool}
@@ -213,19 +213,19 @@ end
 
 
 const ExceptionBreakMode = String
-ExceptionBreakModes = ["never", "always", "unhandled", "userUnhandled"]
+const ExceptionBreakModes = ("never", "always", "unhandled", "userUnhandled")
 
-struct ExceptionPathSegment
+@dict_ctor struct ExceptionPathSegment
     negate::Union{Nothing,Bool}
     names::Vector{String}
 end
 
-struct ExceptionOptions
+@dict_ctor struct ExceptionOptions
     path::Union{Nothing,Vector{ExceptionPathSegment}}
     breakMode::ExceptionBreakMode
 end
 
-struct ExceptionDetails
+@dict_ctor struct ExceptionDetails
     message::Union{Nothing,String}
     typeName::Union{Nothing,String}
     fullTypeName::Union{Nothing,String}
@@ -234,7 +234,7 @@ struct ExceptionDetails
     innerException::Union{Nothing,Vector{ExceptionDetails}}
 end
 
-struct DisassembledInstruction
+@dict_ctor struct DisassembledInstruction
     address::String
     instructionBytes::Union{Nothing,String}
     instruction::String
